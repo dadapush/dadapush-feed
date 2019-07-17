@@ -59,7 +59,7 @@ public class FeedPush implements Closeable, Runnable {
   private String X_CHANNEL_TOKEN;
   private DaDaPushMessageApi api;
   private JdbcDataSource dataSource;
-  private int SLEEP_TIME = 1500;
+  private int SLEEP_TIME = 400;
 
   public static void main(String[] args)
       throws URISyntaxException, SQLException, ParseException {
