@@ -1,6 +1,10 @@
 # dadapush-feed
 send RSS or Atom feeds to DaDaPush
 
+DaDaPush: Real-time Notifications App
+
+Send real-time notifications through our API without coding and maintaining your own app for iOS or Android devices.
+
 # Usage
 ```
   usage: java -jar dadapush-feed-[VERSION]-jar-with-dependencies.jar
