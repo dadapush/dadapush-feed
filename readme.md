@@ -1,5 +1,5 @@
 # dadapush-feed
-send RSS od Atom feeds to DaDaPush
+send RSS or Atom feeds to DaDaPush
 
 # Usage
 ```
