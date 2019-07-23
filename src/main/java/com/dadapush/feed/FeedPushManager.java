@@ -88,6 +88,20 @@ public class FeedPushManager {
 
     CommandLineParser parser = new DefaultParser();
     CommandLine cmd = parser.parse(options, args);
+
+    final RequestConfig requestConfig = RequestConfig.copy(RequestConfig.DEFAULT)
+        .setConnectTimeout(5000)
+        .setSocketTimeout(5000)
+        .setConnectionRequestTimeout(5000)
+        .setContentCompressionEnabled(true)
+        .setMaxRedirects(5)
+        .build();
+
+    final CloseableHttpClient client = HttpClients.custom()
+        .setUserAgent("dadapush-feed/1.0.0")
+        .setDefaultRequestConfig(requestConfig)
+        .build();
+
     if (cmd.hasOption("d")) {
       System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG");
     } else {
@@ -95,7 +109,7 @@ public class FeedPushManager {
     }
     if (cmd.hasOption("config")) {
       String configFile = cmd.getOptionValue("config");
-      run(configFile);
+      run(configFile, client);
     } else if (cmd.hasOption("token") && cmd.hasOption("path") && cmd.hasOption("url")) {
       FeedPushConfig feedPushConfig = new FeedPushConfig(cmd.getOptionValue("token")
           , cmd.getOptionValue("path"), cmd.getOptionValue("url"),
@@ -110,7 +124,7 @@ public class FeedPushManager {
       if (StringUtils.isEmpty(feedPushConfig.getDatabasePath())) {
         throw new RuntimeException("databasePath is empty. " + feedPushConfig);
       }
-      runSimple(feedPushConfig);
+      runSimple(feedPushConfig, client);
     } else {
       HelpFormatter formatter = new HelpFormatter();
       formatter.printHelp("java -jar dadapush-feed-[VERSION]-jar-with-dependencies.jar\n"
@@ -119,21 +133,8 @@ public class FeedPushManager {
 
   }
 
-  private static void runSimple(FeedPushConfig feedPushConfig)
+  private static void runSimple(FeedPushConfig feedPushConfig, CloseableHttpClient client)
       throws URISyntaxException, SQLException, IOException {
-    final RequestConfig requestConfig = RequestConfig.copy(RequestConfig.DEFAULT)
-        .setConnectTimeout(3000)
-        .setSocketTimeout(3000)
-        .setConnectionRequestTimeout(3000)
-        .setContentCompressionEnabled(true)
-        .setMaxRedirects(3)
-        .build();
-
-    final CloseableHttpClient client = HttpClients.custom()
-        .setUserAgent("dadapush-feed/1.0.0")
-        .setDefaultRequestConfig(requestConfig)
-        .build();
-
     FeedPushTask feedPushTask = new FeedPushTask(feedPushConfig, client);
     ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
     ForkJoinTask<?> task = forkJoinPool.submit(feedPushTask);
@@ -141,7 +142,8 @@ public class FeedPushManager {
     client.close();
   }
 
-  private static void run(String configFile) throws URISyntaxException, SQLException, IOException {
+  private static void run(String configFile, CloseableHttpClient client)
+      throws URISyntaxException, SQLException, IOException {
     File file = new File(configFile);
     if (!file.exists() || !file.canRead()) {
       logger.error("file[] not exists or can't read", file);
@@ -159,18 +161,6 @@ public class FeedPushManager {
     ForkJoinPool forkJoinPool = new ForkJoinPool(processors);
     List<ForkJoinTask> forkJoinTaskList = new ArrayList<>();
 
-    final RequestConfig requestConfig = RequestConfig.copy(RequestConfig.DEFAULT)
-        .setConnectTimeout(3000)
-        .setSocketTimeout(3000)
-        .setConnectionRequestTimeout(3000)
-        .setContentCompressionEnabled(true)
-        .setMaxRedirects(3)
-        .build();
-
-    final CloseableHttpClient client = HttpClients.custom()
-        .setUserAgent("dadapush-feed/1.0.0")
-        .setDefaultRequestConfig(requestConfig)
-        .build();
     for (FeedPushConfig feedPushConfig : feedPushConfigList) {
       if (StringUtils.isEmpty(feedPushConfig.getChannelToken())) {
         throw new RuntimeException("channelToken is empty. " + feedPushConfig);
