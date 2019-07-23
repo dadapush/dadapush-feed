@@ -37,7 +37,8 @@ import org.jsoup.safety.Whitelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FeedPushTask implements Runnable{
+public class FeedPushTask implements Runnable {
+
   private static Logger logger = LoggerFactory.getLogger(FeedPushTask.class);
 
   private final Whitelist whitelist = (new Whitelist()).addTags("p")
@@ -50,14 +51,15 @@ public class FeedPushTask implements Runnable{
   private DaDaPushMessageApi api;
   private JdbcDataSource dataSource;
 
-  public FeedPushTask(FeedPushConfig config, CloseableHttpClient client) throws URISyntaxException, SQLException {
+  public FeedPushTask(FeedPushConfig config, CloseableHttpClient client)
+      throws URISyntaxException, SQLException {
     this.config = config;
     this.client = client;
     init();
   }
 
   private void init() throws URISyntaxException, SQLException {
-    logger.info("process feed[{}] db[{}]",config.getFeedUrl(),config.getDatabasePath());
+    logger.info("process feed[{}] db[{}]", config.getFeedUrl(), config.getDatabasePath());
     uri = new URI(config.getFeedUrl());
     api = new DaDaPushMessageApi();
     dataSource = new JdbcDataSource();
@@ -171,8 +173,7 @@ public class FeedPushTask implements Runnable{
             if (!cached) {
               sendPush(md5title, feedInfo);
             }
-            Thread.sleep(config.getSleepTime());// avoid too many request
-          } catch (SQLException | InterruptedException e) {
+          } catch (SQLException e) {
             logger.error("process feedInfo error, feedInfo={}", feedInfo, e);
           }
         }
@@ -199,8 +200,16 @@ public class FeedPushTask implements Runnable{
     body.setActions(Collections.singletonList(action));
     try {
       ResultOfMessagePushResponse result = api.createMessage(body, config.getChannelToken());
-      if (result.getCode() == 0) {
+      if (0 == result.getCode()) {
         logger.info("send push success, title={} result={}", feedInfo.getTitle(), result);
+      } else if (206 == result.getCode()) {
+        try {
+          Thread.sleep(config.getSleepTime());// avoid too many request
+          sendPush(md5title,feedInfo);
+          return;
+        } catch (InterruptedException e) {
+          logger.info("sleep error, title={}", feedInfo.getTitle(), e);
+        }
       } else {
         logger.warn("send push fail, title={} result={}", feedInfo.getTitle(), result);
       }
