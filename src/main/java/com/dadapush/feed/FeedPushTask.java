@@ -155,27 +155,19 @@ public class FeedPushTask implements Runnable {
   @Override
   public void run() {
     try {
-      Calendar instance = Calendar.getInstance();
-      instance.setTime(new Date());
-      instance.add(Calendar.DAY_OF_YEAR, -3);
       SyndFeed syndFeed = fetchFeed(uri);
       List<FeedInfo> feedInfoList = parseFeedInfo(syndFeed);
       for (FeedInfo feedInfo : feedInfoList) {
-        if (instance.before(feedInfo.getPublishedDate())) {
-          logger.info("expired feed. title={} publishedDate={}", feedInfo.getTitle(),
-              feedInfo.getPublishedDate());
-        } else {
-          String md5title = DigestUtils.md5Hex(feedInfo.getUrl());
-          try {
-            boolean cached = isCache(md5title);
-            logger.debug("{} cached={}", feedInfo.getTitle(), cached);
+        String md5title = DigestUtils.md5Hex(feedInfo.getUrl());
+        try {
+          boolean cached = isCache(md5title);
+          logger.debug("{} cached={}", feedInfo.getTitle(), cached);
 
-            if (!cached) {
-              sendPush(md5title, feedInfo);
-            }
-          } catch (SQLException e) {
-            logger.error("process feedInfo error, feedInfo={}", feedInfo, e);
+          if (!cached) {
+            sendPush(md5title, feedInfo);
           }
+        } catch (SQLException e) {
+          logger.error("process feedInfo error, feedInfo={}", feedInfo, e);
         }
       }
 
@@ -202,23 +194,23 @@ public class FeedPushTask implements Runnable {
       ResultOfMessagePushResponse result = api.createMessage(body, config.getChannelToken());
       if (0 == result.getCode()) {
         logger.info("send push success, title={} result={}", feedInfo.getTitle(), result);
+        try {
+          boolean addCache = addCache(md5title, feedInfo);
+          logger.info("add feed to cache, title={} insert={}", feedInfo.getTitle(), addCache);
+        } catch (SQLException e) {
+          logger.info("add feed to cache error, title={}", feedInfo.getTitle(), e);
+        }
       } else if (206 == result.getCode()) {
         try {
           Thread.sleep(config.getSleepTime());// avoid too many request
-          sendPush(md5title,feedInfo);
-          return;
+          sendPush(md5title, feedInfo);
         } catch (InterruptedException e) {
           logger.info("sleep error, title={}", feedInfo.getTitle(), e);
         }
       } else {
         logger.warn("send push fail, title={} result={}", feedInfo.getTitle(), result);
       }
-      try {
-        boolean addCache = addCache(md5title, feedInfo);
-        logger.info("add feed to cache, title={} insert={}", feedInfo.getTitle(), addCache);
-      } catch (SQLException e) {
-        logger.info("add feed to cache error, title={}", feedInfo.getTitle(), e);
-      }
+
     } catch (ApiException e) {
       logger.info("send push fail, feedInfo={}", feedInfo, e);
     }
