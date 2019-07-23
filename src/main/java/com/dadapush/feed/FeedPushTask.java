@@ -18,7 +18,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -124,7 +123,13 @@ public class FeedPushTask implements Runnable {
     for (Object object : feedEntries) {
       SyndEntryImpl syndEntry = (SyndEntryImpl) object;
       String title = syndEntry.getTitle();
+      if (StringUtils.isEmpty(title)) {
+        continue;
+      }
       String link = syndEntry.getLink();
+      if (StringUtils.isEmpty(link)) {
+        continue;
+      }
       Date publishedDate = syndEntry.getPublishedDate();
       SyndContent syndContent = syndEntry.getDescription();
       String raw_description = null;
@@ -140,16 +145,17 @@ public class FeedPushTask implements Runnable {
       } else {
         raw_description = syndContent.getValue();
       }
-      if(StringUtils.isNotEmpty(raw_description)){
-        String description = Jsoup.clean(raw_description, whitelist);
-        description = description.replace("<p>", "");
-        description = description.replace("</p>", "");
-        description = description.replace("&nbsp;", "");
-
-        FeedInfo feedInfo = new FeedInfo(title, link, description, publishedDate);
-        logger.debug("feedInfo={}", feedInfo);
-        feedInfoList.add(feedInfo);
+      if (StringUtils.isEmpty(raw_description)) {
+        continue;
       }
+      String description = Jsoup.clean(raw_description, whitelist);
+      description = description.replace("<p>", "");
+      description = description.replace("</p>", "");
+      description = description.replace("&nbsp;", "");
+
+      FeedInfo feedInfo = new FeedInfo(title, link, description, publishedDate);
+      logger.debug("feedInfo={}", feedInfo);
+      feedInfoList.add(feedInfo);
     }
     return feedInfoList;
   }
@@ -181,7 +187,8 @@ public class FeedPushTask implements Runnable {
   private void sendPush(String md5title, FeedInfo feedInfo) {
     MessagePushRequest body = new MessagePushRequest();
     body.setNeedPush(true);
-    if(StringUtils.isEmpty(feedInfo.getTitle())||StringUtils.isEmpty(feedInfo.getDescription())){
+    if (StringUtils.isEmpty(feedInfo.getTitle()) || StringUtils
+        .isEmpty(feedInfo.getDescription())) {
       return;
     }
     String title = StringUtils.truncate(Jsoup.clean(feedInfo.getTitle(), Whitelist.none()), 50);
