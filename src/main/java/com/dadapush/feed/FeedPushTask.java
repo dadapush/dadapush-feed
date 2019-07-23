@@ -179,6 +179,9 @@ public class FeedPushTask implements Runnable {
   private void sendPush(String md5title, FeedInfo feedInfo) {
     MessagePushRequest body = new MessagePushRequest();
     body.setNeedPush(true);
+    if(StringUtils.isEmpty(feedInfo.getTitle())||StringUtils.isEmpty(feedInfo.getDescription())){
+      return;
+    }
     String title = StringUtils.truncate(Jsoup.clean(feedInfo.getTitle(), Whitelist.none()), 50);
     body.setTitle(title);
     feedInfo.setTitle(title);
