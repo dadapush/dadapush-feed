@@ -28,13 +28,13 @@ import org.slf4j.LoggerFactory;
 
 public class FeedPushManager {
 
-  private static Logger logger = LoggerFactory.getLogger(FeedPushRunner.class);
+  private static Logger logger = LoggerFactory.getLogger(FeedPushManager.class);
 
   public static void main(String[] args)
       throws URISyntaxException, SQLException, IOException, ParseException {
 
     Options options = new Options();
-    options.addOption(Option.builder("c").argName("config")
+    options.addOption(Option.builder("c").argName("config.json")
         .longOpt("config")
         .desc("config file")
         .hasArg(true)
@@ -42,6 +42,37 @@ public class FeedPushManager {
         .type(String.class)
         .build());
 
+    options.addOption(Option.builder("T").argName("token")
+        .longOpt("token")
+        .desc("channel token")
+        .hasArg(true)
+        .numberOfArgs(1)
+        .type(String.class)
+        .build());
+
+    options.addOption(Option.builder("p").argName("path")
+        .longOpt("path")
+        .desc("database path")
+        .hasArg(true)
+        .numberOfArgs(1)
+        .type(String.class)
+        .build());
+
+    options.addOption(Option.builder("u").argName("url")
+        .longOpt("url")
+        .desc("feed url")
+        .hasArg(true)
+        .numberOfArgs(1)
+        .type(String.class)
+        .build());
+
+    options.addOption(Option.builder("n").argName("300ms")
+        .longOpt("interval")
+        .desc("interval time, default 300ms")
+        .hasArg(true)
+        .numberOfArgs(1)
+        .type(Long.class)
+        .build());
 
     options.addOption(Option.builder("d").argName("debug")
         .longOpt("debug")
@@ -65,11 +96,49 @@ public class FeedPushManager {
     if (cmd.hasOption("config")) {
       String configFile = cmd.getOptionValue("config");
       run(configFile);
-    }else {
+    } else if (cmd.hasOption("token") && cmd.hasOption("path") && cmd.hasOption("url")) {
+      FeedPushConfig feedPushConfig = new FeedPushConfig(cmd.getOptionValue("token")
+          , cmd.getOptionValue("path"), cmd.getOptionValue("url"),
+          Long.valueOf(cmd.getOptionValue("interval", "300")));
+
+      if (StringUtils.isEmpty(feedPushConfig.getChannelToken())) {
+        throw new RuntimeException("channelToken is empty. " + feedPushConfig);
+      }
+      if (StringUtils.isEmpty(feedPushConfig.getFeedUrl())) {
+        throw new RuntimeException("feedUrl is empty. " + feedPushConfig);
+      }
+      if (StringUtils.isEmpty(feedPushConfig.getDatabasePath())) {
+        throw new RuntimeException("databasePath is empty. " + feedPushConfig);
+      }
+      runSimple(feedPushConfig);
+    } else {
       HelpFormatter formatter = new HelpFormatter();
-      formatter.printHelp("java -jar dadapush-feed-[VERSION]-jar-with-dependencies.jar", options);
+      formatter.printHelp("java -jar dadapush-feed-[VERSION]-jar-with-dependencies.jar\n"
+          + "If the option [--config/-c] is set, it will be used first.", options);
     }
 
+  }
+
+  private static void runSimple(FeedPushConfig feedPushConfig)
+      throws URISyntaxException, SQLException, IOException {
+    final RequestConfig requestConfig = RequestConfig.copy(RequestConfig.DEFAULT)
+        .setConnectTimeout(3000)
+        .setSocketTimeout(3000)
+        .setConnectionRequestTimeout(3000)
+        .setContentCompressionEnabled(true)
+        .setMaxRedirects(3)
+        .build();
+
+    final CloseableHttpClient client = HttpClients.custom()
+        .setUserAgent("dadapush-feed/1.0.0")
+        .setDefaultRequestConfig(requestConfig)
+        .build();
+
+    FeedPushTask feedPushTask = new FeedPushTask(feedPushConfig, client);
+    ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
+    ForkJoinTask<?> task = forkJoinPool.submit(feedPushTask);
+    task.join();
+    client.close();
   }
 
   private static void run(String configFile) throws URISyntaxException, SQLException, IOException {
@@ -84,8 +153,8 @@ public class FeedPushManager {
         }.getType());
 
     int processors = Runtime.getRuntime().availableProcessors();
-    if(processors<2){
-      processors=2;
+    if (processors < 2) {
+      processors = 2;
     }
     ForkJoinPool forkJoinPool = new ForkJoinPool(processors);
     List<ForkJoinTask> forkJoinTaskList = new ArrayList<>();
@@ -115,7 +184,7 @@ public class FeedPushManager {
       if (feedPushConfig.getSleepTime() < 300L) {
         throw new RuntimeException("sleepTime not allow less than 500ms. " + feedPushConfig);
       }
-      ForkJoinTask<?> task = forkJoinPool.submit(new FeedPushTask(feedPushConfig,client));
+      ForkJoinTask<?> task = forkJoinPool.submit(new FeedPushTask(feedPushConfig, client));
       forkJoinTaskList.add(task);
     }
 

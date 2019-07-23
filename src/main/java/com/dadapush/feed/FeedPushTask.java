@@ -56,7 +56,8 @@ public class FeedPushTask implements Runnable{
     init();
   }
 
-  public void init() throws URISyntaxException, SQLException {
+  private void init() throws URISyntaxException, SQLException {
+    logger.info("process feed[{}] db[{}]",config.getFeedUrl(),config.getDatabasePath());
     uri = new URI(config.getFeedUrl());
     api = new DaDaPushMessageApi();
     dataSource = new JdbcDataSource();
@@ -72,7 +73,7 @@ public class FeedPushTask implements Runnable{
 
   }
 
-  public boolean isCache(String md5title) throws SQLException {
+  private boolean isCache(String md5title) throws SQLException {
     QueryRunner queryRunner = new QueryRunner(dataSource);
     FeedInfo feedInfo = queryRunner
         .query("select * from feed_cache where md5title=?", resultSet -> {
@@ -88,7 +89,8 @@ public class FeedPushTask implements Runnable{
         }, md5title);
     return feedInfo != null;
   }
-  public boolean addCache(String md5title, FeedInfo feedInfo) throws SQLException {
+
+  private boolean addCache(String md5title, FeedInfo feedInfo) throws SQLException {
     QueryRunner queryRunner = new QueryRunner(dataSource);
     int update = queryRunner
         .update(
@@ -98,7 +100,7 @@ public class FeedPushTask implements Runnable{
     return update > 0;
   }
 
-  public SyndFeed fetchFeed(URI uri) throws IOException, FeedException {
+  private SyndFeed fetchFeed(URI uri) throws IOException, FeedException {
     HttpUriRequest request = new HttpGet(uri);
     CloseableHttpResponse response = client.execute(request);
     StatusLine statusLine = response.getStatusLine();
@@ -114,7 +116,7 @@ public class FeedPushTask implements Runnable{
     return feed;
   }
 
-  public List<FeedInfo> parseFeedInfo(SyndFeed feed) {
+  private List<FeedInfo> parseFeedInfo(SyndFeed feed) {
     List<FeedInfo> feedInfoList = new ArrayList<>();
     List feedEntries = feed.getEntries();
     for (Object object : feedEntries) {
@@ -181,7 +183,7 @@ public class FeedPushTask implements Runnable{
     }
   }
 
-  public void sendPush(String md5title, FeedInfo feedInfo) {
+  private void sendPush(String md5title, FeedInfo feedInfo) {
     MessagePushRequest body = new MessagePushRequest();
     body.setNeedPush(true);
     String title = StringUtils.truncate(Jsoup.clean(feedInfo.getTitle(), Whitelist.none()), 50);

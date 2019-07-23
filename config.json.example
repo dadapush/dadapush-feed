@@ -1,0 +1,14 @@
+[
+  {
+    "channelToken": "channel-token",
+    "databasePath": "db-path",
+    "feedUrl": "feed-url",
+    "sleepTime": 300
+  },
+  {
+      "channelToken": "channel-token",
+      "databasePath": "db-path",
+      "feedUrl": "feed-url",
+      "sleepTime": 300
+  }
+]
