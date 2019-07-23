@@ -140,14 +140,16 @@ public class FeedPushTask implements Runnable {
       } else {
         raw_description = syndContent.getValue();
       }
-      String description = Jsoup.clean(raw_description, whitelist);
-      description = description.replace("<p>", "");
-      description = description.replace("</p>", "");
-      description = description.replace("&nbsp;", "");
+      if(StringUtils.isNotEmpty(raw_description)){
+        String description = Jsoup.clean(raw_description, whitelist);
+        description = description.replace("<p>", "");
+        description = description.replace("</p>", "");
+        description = description.replace("&nbsp;", "");
 
-      FeedInfo feedInfo = new FeedInfo(title, link, description, publishedDate);
-      logger.debug("feedInfo={}", feedInfo);
-      feedInfoList.add(feedInfo);
+        FeedInfo feedInfo = new FeedInfo(title, link, description, publishedDate);
+        logger.debug("feedInfo={}", feedInfo);
+        feedInfoList.add(feedInfo);
+      }
     }
     return feedInfoList;
   }
