@@ -71,7 +71,9 @@ public class FeedPushTask implements Runnable {
     QueryRunner queryRunner = new QueryRunner(dataSource);
     queryRunner.execute(
         "CREATE TABLE IF NOT EXISTS feed_cache(ID INT PRIMARY KEY auto_increment, title VARCHAR(255) not null, md5title VARCHAR(32) not null unique,url VARCHAR(255) not null,description TEXT,publishedDate datetime);");
-
+    queryRunner.execute("ALTER TABLE feed_cache CHANGE url url VARCHAR(1000) NOT NULL DEFAULT '';");
+    queryRunner
+        .execute("ALTER TABLE feed_cache CHANGE title title VARCHAR(1000) NOT NULL DEFAULT '';");
   }
 
   private boolean isCache(String md5title) throws SQLException {
